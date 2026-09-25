@@ -48,6 +48,31 @@ So, in this video - let me show you some things that you can do with Jev right N
 
 Here's one that I think a lot of you will relate to, which is model routing.
 
+The core concept behind model routing is to use the right tool for the job. If you have something simple, like a query rewrite or basic summarisation - send it to a small model, like a Anthropic Haiku, GPT Luna, or a DeepSeek flash.
+
+But if you need something that requires complex reasoning, like planning out a big software refactor - well let's send that to a large model, like an GPT Sol, Anthropic Opus or Kimi-K3.
+
+A lot of people do this with a lightweight LLM, like Claude Haiku.
+
+Here's an example that I slopped together.
+
+[Show `ROUTING_INSTRUCTION` in `scripts/01_inference_endpoint_router/routing_scenario.py`]
+First, I set up the task for my model, which is for it to find the least capable,
+or, smallest, model that can handle a given task
+
+[Show `ROUTE_CRITERIA` in `scripts/01_inference_endpoint_router/routing_scenario.py`]
+Then, I have some basic rules here on which models to use for what type of task,
+in increasing complexity.
+
+Here I also actually have a "human review" criteria, too -
+maybe it's something that I don't want to delegate at all.
+
+So I just send this to my inference provider - `openrouter` in this case,
+and in this function [show `openrouter_payload`], I request for it to emit
+`json_schema` so that theoretically, I can parse it and plug it back into my control flow.
+
+If I run this - I've got it to emit some
+
 ## Recipe 1: Route coding tasks to the right model
 
 ### The problem
