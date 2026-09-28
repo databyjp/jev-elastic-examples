@@ -129,92 +129,17 @@ For the right job, Jev can be significantly faster to run, and significantly che
 
 So - what *are* the right jobs?
 
-<AGENT TO COMPLETE - e.g. no big reasoning required, simple, particular answer types, etc.>
+The sweet spot is a semantic decision where you already know the shape of the valid answers.
 
+Like yes-or-no probability, one option from a fixed list, or a score against a rubric.
 
-## Recipe 1: Route coding tasks to the right model
+The big difference with an LLM, though, is that the task, or the *quote* "mental load" needs to be relatively straightforward.
 
-### The problem
+Think about it like this - if you need a model to do lots of reasoning, do maths, or write some code before spitting out an answer, that's probably not a Jev job.
 
-- A coding agent should not send every task to the same model.
-- A localized test expectation does not need the same reasoning budget as an intermittent leader-failover race.
-- Some requests should not reach a model at all. Rotating a production signing key and deleting the old key requires explicit approval and separate authorization checks.
-- Use actual EIS model IDs for the three model routes:
-  - `anthropic-claude-4.5-haiku`
-  - `anthropic-claude-4.6-sonnet`
-  - `anthropic-claude-4.6-opus`
-  - `human_review`
-  [show the four coding requests entering four named routes]
+But if you need a structured output like what we discussed, from unstructured text, Jev is great.
 
-### The conventional LLM implementation
-
-- Start with Claude Haiku 4.5 through OpenRouter as a realistic classifier baseline.
-- Give Haiku the request, the same four route definitions, and a strict JSON Schema that permits only one `model_id`.
-- Run one HTTP request per coding task in series.
-  [screen recording: `01_haiku_serial.py`, focusing on the loop and structured-output payload]
-- Explain what this approach provides and what it still does:
-  - The JSON shape is constrained.
-  - The model still generates a response token by token.
-  - Four independent classifications require four serial round trips in this version.
-
-### The serial Jev implementation
-
-- Replace the system prompt and JSON Schema with one Jev `Choice` over the same routes.
-- Send each coding request as state and read `response.choices["model"]`.
-- Show the returned choice and full probability distribution. Do not interpret a high probability as authorization.
-  [screen recording: `02_jev_serial.py`, then terminal output]
-- Compare serial with serial. This isolates the classifier before introducing concurrency.
-
-### When the application has several independent routing requests
-
-- Explain the obvious LLM optimization. Independent Haiku calls do not have to wait for one another.
-- Use `asyncio.gather` to submit four OpenRouter requests concurrently.
-  [screen recording: `03_haiku_concurrent.py`, highlight `asyncio.gather`]
-- Make the boundary explicit: this overlaps four HTTP requests and four model generations. It does not turn them into one inference request.
-
-### Jev's one-request version
-
-- Put all four coding requests into one shared state object.
-- Create four `Choice` questions, each explicitly pointing to one request by index.
-- Send the state and question map through one `system_one` call. Jev evaluates the questions independently and in parallel.
-  [screen recording: `04_jev_parallel.py`, progressively highlight shared state, question map, and single call]
-- Show the architectural difference rather than only the stopwatch:
-  [diagram: Haiku async = four client requests → four generations; Jev = one client request → four independent typed questions]
-
-### What the comparison shows
-
-- Explain the measurement before showing the result:
-  - Same four coding requests and route definitions.
-  - Five measured runs through one reused client.
-  - No hidden warm-up, so the first run includes initial connection setup.
-  - Report every wall time, mean, range, request count, mean tokens, cost, and route consistency.
-- Use the final recording pass as the authoritative result. Current validation snapshot:
-
-  | Mode | Calls per run | Mean wall time | Observed range | Mean cost per run |
-  | --- | ---: | ---: | ---: | ---: |
-  | Haiku serial | 4 | 4.796 s | 4.098–5.491 s | $0.002451 |
-  | Jev serial | 4 | 1.049 s | 0.912–1.380 s | $0.000102 |
-  | Haiku concurrent | 4 | 1.326 s | 1.181–1.481 s | $0.002451 |
-  | Jev, four questions in one request | 1 | 0.336 s | 0.244–0.655 s | $0.000073 |
-
-  [show table as an editor overlay; do not read every number aloud]
-- State the useful findings:
-  - Haiku concurrency removes most of the serial waiting time.
-  - Jev's one-request form reduces the application-level request count from four to one.
-  - All twenty classifications in every mode agreed on the four selected routes in this hand-built sample.
-  - Jev's parallel form uses fewer input tokens than four separate Jev requests because shared state and request overhead are sent once.
-- State what the comparison does not prove:
-  - Four hand-picked examples do not establish routing accuracy.
-  - Local timing includes this machine, network, OpenRouter provider selection, and current service load.
-  - OpenRouter reports Haiku's cost. The scripts calculate Jev cost from TypeSafe's documented price and token usage, so it is an estimate rather than a billing record.
-  - The TypeSafe account accepts `jev-latest`; the script prints the resolved `jev-1.13.0` model used in the measured run.
-  - Production routing still needs endpoint availability, cost ceilings, permissions, fallback behavior, and evaluation on labeled requests.
-
-### Transition to the shorter recipes
-
-- Name the repeated pattern established by the router: compact state, bounded question, probabilities, code policy, safe fallback.
-- Tell the viewer the remaining recipes reuse that pattern at different points in an AI product, so they do not need four implementations each.
-  [return to lifecycle graphic and move highlight to input and retrieval]
+With that in mind, let's take a quick look at a few more examples where you can use this pattern.
 
 ---
 
