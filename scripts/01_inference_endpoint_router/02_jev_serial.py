@@ -34,6 +34,7 @@ def main() -> None:
         for _ in range(BENCHMARK_RUNS):
             started = perf_counter()
             results = []
+            response_json = []
             for request in CODING_AGENT_REQUESTS:
                 response = client.system_one(
                     state={"coding_agent_request": request["prompt"]},
@@ -42,6 +43,7 @@ def main() -> None:
                 resolved_model = response.model
                 input_tokens = response.usage.input_tokens or 0
                 output_tokens = response.usage.output_tokens or 0
+                response_json.append(response.model_dump(mode="json"))
                 results.append(
                     RouteResult(
                         model_id=response.choices["model"].choice,
@@ -54,6 +56,7 @@ def main() -> None:
                 BenchmarkRun(
                     elapsed_seconds=perf_counter() - started,
                     results=results,
+                    response_json=response_json,
                 )
             )
 

@@ -27,17 +27,21 @@ def main() -> None:
         for _ in range(BENCHMARK_RUNS):
             started = perf_counter()
             results = []
+            response_json = []
             for request in CODING_AGENT_REQUESTS:
                 response = client.post(
                     OPENROUTER_URL,
                     json=openrouter_payload(request["prompt"]),
                 )
                 response.raise_for_status()
-                results.append(parse_openrouter_response(response.json()))
+                data = response.json()
+                results.append(parse_openrouter_response(data))
+                response_json.append(data)
             runs.append(
                 BenchmarkRun(
                     elapsed_seconds=perf_counter() - started,
                     results=results,
+                    response_json=response_json,
                 )
             )
 

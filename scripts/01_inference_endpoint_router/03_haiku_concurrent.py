@@ -3,6 +3,7 @@
 import asyncio
 import os
 from time import perf_counter
+from typing import Any
 
 import httpx
 
@@ -23,10 +24,11 @@ from routing_scenario import (
 async def classify(
     client: httpx.AsyncClient,
     prompt: str,
-) -> RouteResult:
+) -> tuple[RouteResult, dict[str, Any]]:
     response = await client.post(OPENROUTER_URL, json=openrouter_payload(prompt))
     response.raise_for_status()
-    return parse_openrouter_response(response.json())
+    data = response.json()
+    return parse_openrouter_response(data), data
 
 
 async def run() -> None:
@@ -37,7 +39,7 @@ async def run() -> None:
         runs = []
         for _ in range(BENCHMARK_RUNS):
             started = perf_counter()
-            results = await asyncio.gather(
+            captured = await asyncio.gather(
                 *(
                     classify(client, request["prompt"])
                     for request in CODING_AGENT_REQUESTS
@@ -46,7 +48,8 @@ async def run() -> None:
             runs.append(
                 BenchmarkRun(
                     elapsed_seconds=perf_counter() - started,
-                    results=results,
+                    results=[result for result, _ in captured],
+                    response_json=[response for _, response in captured],
                 )
             )
 

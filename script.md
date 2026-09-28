@@ -67,11 +67,70 @@ in increasing complexity.
 Here I also actually have a "human review" criteria, too -
 maybe it's something that I don't want to delegate at all.
 
+[Show `CODING_AGENT_REQUESTS` in `scripts/01_inference_endpoint_router/routing_scenario.py`]
+And then I've got some simple prompts here, which we'll ask our LLM to route for us.
+
 So I just send this to my inference provider - `openrouter` in this case,
 and in this function [show `openrouter_payload`], I request for it to emit
 `json_schema` so that theoretically, I can parse it and plug it back into my control flow.
 
-If I run this - I've got it to emit some
+Let's run this. I've got it set up to run multiple times, so we can get some basic stats.
+
+And we see it takes about 5 seconds, and about 0.2 cents per run. So it's not bad - 0.2 cents isn't a lot of money. But also, this isn't a big job - and if you're serving millions of users - each user making multiple requests - stuff like this adds up pretty quickly.
+
+So let's see the same thing, with Jev.
+
+[open `scripts/01_inference_endpoint_router/02_jev_serial.py`]
+The inputs for Jev is actually pretty similar -
+
+[show `MODEL_ROUTING_QUESTION`]
+so we set up this `MODEL_ROUTING_QUESTION` object here,
+which uses the same ROUTING_INSTRUCTION and ROUTE_CRITERIA as what we gave Haiku.
+
+Then for each of the same scenarios from `CODING_AGENT_REQUESTS` that we used for Haiku,
+we instantiate a `TypeSafeClient` client, and run a request with this `client.system_one` method,
+passing the `MODEL_ROUTING_QUESTION` that we just set up
+
+The rest of the code here is just me keeping count of the tokens - and tracking the results.
+
+When I run this with Jev, I get the exact same results here, across the same runs - makes sense since this is a fairly contrived task;
+
+BUT - this is the cool part - it did it around 1 second per task, whereas Haiku took about 5 seconds per task. And the cost was about 0.01c per task - about one twentieth of our cheap model!
+
+If I did this with Sonnet or Opus, it would have been like five to ten times more expensive probably.
+
+Now, let's talk about performance some more. Some of you might have been screaming at the screen - because I'm running these functions synchronously in a for loop.
+
+Not great, since that means I'm paying for network latency in series. If you're using LLMs for model routing, you'd make use of concurrency - for example,
+
+[show `scripts/01_inference_endpoint_router/03_haiku_concurrent.py`]
+you could use an async library like asyncio, like I've done here, and just gather the responses like so.
+
+If I run this, you'll see that each run now occurs in around 1.5 seconds, which is much faster, and makes sense, since the four requests are now getting sent concurrently rather than in series.
+
+Now, with Jev, there's actually an even neater trick.
+
+If we take a look at this script here
+[Show `scripts/01_inference_endpoint_router/04_jev_parallel.py`] -
+
+we build this `questions` dictionary first with all the questions, and then each request to TypeSafe just includes all of them, at once.
+
+Meaning that I only pay for the network latency once - I don't even need to deal with any concurrency to minimise its impact.
+
+So if I now run this - each run takes about a quarter of a second!
+
+And the cost is even lower, with - I think each run being about seven thousandth of a cent.
+
+And I will note that for these tasks, Jev and Claude Haiku gave the exact same answers.
+
+This is why people like Jev so much.
+
+For the right job, Jev can be significantly faster to run, and significantly cheaper to run - than an LLM. And you'll probably get quite similar results to running an LLM.
+
+So - what *are* the right jobs?
+
+<AGENT TO COMPLETE - e.g. no big reasoning required, simple, particular answer types, etc.>
+
 
 ## Recipe 1: Route coding tasks to the right model
 

@@ -5,6 +5,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import fmean
+from textwrap import indent
 from typing import Any
 
 from dotenv import load_dotenv
@@ -16,7 +17,7 @@ JEV_MODEL = "jev-latest"
 # Jev 1.13 pricing verified 2026-09-24: https://docs.typesafe.ai/models
 JEV_INPUT_USD_PER_MILLION_TOKENS = 0.042
 JEV_OUTPUT_USD_PER_MILLION_TOKENS = 0.0
-BENCHMARK_RUNS = 5
+BENCHMARK_RUNS = 3
 
 CODING_AGENT_REQUESTS = [
     {
@@ -100,6 +101,7 @@ class RouteResult:
 class BenchmarkRun:
     elapsed_seconds: float
     results: list[RouteResult]
+    response_json: list[dict[str, Any]]
     request_input_tokens: int | None = None
     request_output_tokens: int | None = None
     request_cost_usd: float | None = None
@@ -210,6 +212,20 @@ def print_summary(
     elapsed = [run.elapsed_seconds for run in runs]
     print(f"Mode: {mode}")
     print(f"Classifier: {inference_model}")
+    print("Classifier responses from final run:")
+    final_run = runs[-1]
+    combined = len(final_run.response_json) == 1
+    for response_index, response in enumerate(final_run.response_json):
+        label = (
+            "combined response"
+            if combined
+            else CODING_AGENT_REQUESTS[response_index]["name"]
+        )
+        print(f"  {label}:")
+        formatted = json.dumps(response, indent=2, sort_keys=True)
+        print(indent(formatted, "    "))
+
+    print("\nBenchmark summary:")
     print(f"Runs: {len(runs)}")
     print(f"API calls per run: {api_calls_per_run}")
     print(f"Total API calls submitted: {api_calls_per_run * len(runs)}")
@@ -232,4 +248,3 @@ def print_summary(
             for model_id, count in counts.most_common()
         )
         print(f"  {request['name']}: {selections}")
-    print("EIS invocation: skipped")

@@ -54,7 +54,7 @@ The router variants share `routing_scenario.py` so every mode receives the same 
 | `03_haiku_concurrent.py` | 4 | Concurrent HTTP requests with `asyncio.gather` |
 | `04_jev_parallel.py` | 1 | Four Jev questions evaluated independently in one request |
 
-Each script runs its mode five times while reusing one client. It reports every wall time, the mean and range, API calls per run and in total, mean token usage, route consistency, and cost. OpenRouter supplies Haiku's cost in each response. The Jev scripts calculate cost from response token usage using TypeSafe's [Jev 1.13 price](https://docs.typesafe.ai/models), verified on 2026-09-24: $0.042 per million input tokens and no output-token charge. Calculated costs are estimates rather than billing records.
+Each script runs its mode `BENCHMARK_RUNS` times while reusing one client. It first pretty-prints the classifier JSON from the final measured run, then reports every wall time, the mean and range, API calls per run and in total, mean token usage, route consistency, and cost. OpenRouter supplies Haiku's cost in each response. The Jev scripts calculate cost from response token usage using TypeSafe's [Jev 1.13 price](https://docs.typesafe.ai/models), verified on 2026-09-24: $0.042 per million input tokens and no output-token charge. Calculated costs are estimates rather than billing records.
 
 There is no unmeasured warm-up, so the first measured run includes initial connection setup. The results describe that machine, network path, and provider state. They are not general provider benchmarks.
 

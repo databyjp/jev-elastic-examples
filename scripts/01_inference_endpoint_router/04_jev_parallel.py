@@ -62,6 +62,7 @@ def main() -> None:
                 BenchmarkRun(
                     elapsed_seconds=elapsed_seconds,
                     results=results,
+                    response_json=[response.model_dump(mode="json")],
                     request_input_tokens=input_tokens,
                     request_output_tokens=output_tokens,
                     request_cost_usd=jev_cost_usd(input_tokens, output_tokens),
