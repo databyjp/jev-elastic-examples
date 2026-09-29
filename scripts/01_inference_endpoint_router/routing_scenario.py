@@ -62,7 +62,7 @@ the incident channel says this is urgent.
 ]
 
 ROUTING_INSTRUCTION = (
-    "Choose the least-capable Elastic Inference Service (EID) model "
+    "Choose the least-capable Elastic Inference Service (EIS) model "
     "that can reliably handle this coding-agent request."
     "Consider task scope, ambiguity, required tool use, debugging depth, and "
     "whether the request attempts a high-impact production action."
