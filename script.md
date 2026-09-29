@@ -19,21 +19,31 @@ timestamp: 2026-09-25
 
 ## Opening: an LLM is often doing the job of an `if` statement
 
-Let's talk Jev. TypeScript AI just launched Jev, and the hype and excitement has gone through the roof!
+Let's talk Jev.
+[graphic of Jev homepage]
 
-It's surprising to many, but maybe we shouldn't be.
+TypeScript AI just launched this model a few weeks ago, and the hype and excitement is absolutely through the roof!
 
-Here's the thing. A lot of us spent spent the last two years integrating GenAI models to everything from our search applications, customer support chatbots, or even actual programming logic.
+It's been surprising to many - but maybe we shouldn't be.
 
-Some of those things even work amazingly well - agentic search is really, really, smart, chatbots are more capable than ever, although - not without problems, and programming logic that use to require a huge block of code can be solved by asking a generative model to "make a judgement".
+Here's the thing. A lot of us spent spent the last two years integrating GenAI models to everything -
+
+[graphic - search / chatbots / programming as bullet points]
+into our search applications, customer support chatbots, or even actual programming logic.
+
+[graphic - show subtitles to bullets fitting these descriptions?]
+Don't get me wrong - some of those things even work amazingly well - agentic search is really, really, smart, chatbots are more capable than ever, and programming logic that used to require a huge block of code can be solved by asking a generative model to "make a judgement".
 
 But this last part - dealing with logical or selection problems with GenAI models, is still a bit... suboptimal.
 
+[graphic - soemthing about "GenAI models aren't perfect"]
 One, it can be hard to get generative AI models to produce an output that you can plug into a control flow. You can ask the model to produce a structured file like a JSON, or a TOML, but at the end of the day, you're really just throwing that ball in the air and praying to the GenAI gods [picture of a Hail Mary pass].
 
+[graphic of Jev homepage / system one model]
 It's against this backdrop that TypeSafe AI launched Jev, what they call a "System One" model.
 
-At a high level, you can think of Jev as a lovechild between an old-school classifier model, and an LLM. Like an LLM, Jev can take any unstructured text as input. BUT, Jev's far more disciplined about its outputs, meaning that it can only output a decision format that you define ahead of time. Jev can output a "Noul" a probability for a yes-or-no question, a "Choice", which is one option from a closed list, or a "Score" against a rubric.
+[graphic of Jev input / output]
+At a high level, I think of Jev as a lovechild between an old-school classifier model, and an LLM. Like an LLM, Jev can take any unstructured text as input. BUT, Jev's far more disciplined about its outputs, meaning that it can only output a decision format that you define ahead of time. Jev can output a "Noul" a probability for a yes-or-no question, a "Choice", which is one option from a closed list, or a "Score" against a rubric.
 
 This is great, because it plugs directly into a mental model of how programs and control flows actually work. Steve Faulkner from Cloudflare even proposed a programming language wrapping Jev called "Probably" (https://x.com/southpolesteve/status/2100767781868150938) - although, as this commenter pointed out - it was a missed opportunity to call it JevaScript (https://x.com/NickGideo/status/2100816570003914755)!
 
@@ -45,6 +55,7 @@ So, in this video - let me show you some things that you can do with Jev right N
 
 ---
 
+[graphic of model routing]
 Here's one that I think a lot of you will relate to, which is model routing.
 
 The core concept behind model routing is to use the right tool for the job. If you have something simple, like a query rewrite or basic summarisation - send it to a small model, like a Anthropic Haiku, GPT Luna, or a DeepSeek flash.
@@ -53,6 +64,7 @@ But if you need something that requires complex reasoning, like planning out a b
 
 A lot of people do this with a lightweight LLM, like Claude Haiku.
 
+[Screencast from here]
 Here's an example that I slopped together.
 
 [Show `ROUTING_INSTRUCTION` in `scripts/01_inference_endpoint_router/routing_scenario.py`]
@@ -219,6 +231,7 @@ Here, for example - I'm basically tagging certain messages in traces, to identif
 
 ## Draft wrap-up
 
+[graphic of summary in bullets]
 So, to wrap up - Jev is an excellent tool to have in your tool kit.
 
 Like that language "Probably" suggests, it's great for all those awkward jobs where ordinary rules aren't quite semantic enough, but a general-purpose LLM is doing far more work than you need.
