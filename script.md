@@ -1,14 +1,13 @@
 ---
-type: outline
+type: Script
 title: "How to Jevlevate your app"
-status: phase-1-structure
+status: draft
 timestamp: 2026-09-25
 ---
 
 # Video brief
 
 **Working title:** How to Jevlevate your app
-**Working title:**
 
 **Alternative titles:**
 
@@ -16,7 +15,7 @@ timestamp: 2026-09-25
 - Jev - the missing decision layer in your app
 - [n] ways to add Jev to your Elasticsearch app
 
-# Video outline
+# Video script
 
 ## Opening: an LLM is often doing the job of an `if` statement
 
@@ -145,123 +144,93 @@ With that in mind, let's take a quick look at a few more examples where you can 
 
 ## Recipe 2: Screen user input and retrieved text separately
 
-- Problem: both user messages and retrieved passages can contain instruction overrides or attempts to extract credentials. They enter the application through different paths and should remain separate cases.
-- State: source type plus the supplied text.
-- Jev questions: two independent `Noul` questions for instruction override and credential extraction.
-- Code policy: if either score crosses the illustrative review threshold, route the text to review before use. Otherwise continue through the application's normal controls.
-- Proof case: contrast an ordinary refund question with a user request to print a service-account password; then contrast a policy passage with a retrieved passage containing an injected `SYSTEM` instruction.
-  [screen recording: `02_input_and_retrieval_safety_gate.py`, then four-row terminal result]
-- Boundary: this is one classifier in a larger security design. It does not replace prompt isolation, access control, redaction, allowlists, or review.
+This one is for the beginning of the pipeline - before anything reaches your main model, to prevent prompt injection attacks.
+
+Prompt injection works by someone inserting a malicious prompt to override your instructions. The injector might be trying to do something like extract sensitive information, like credentials or personal information, or something as simple as just trying to get free use of an LLM.
+
+This can come in the form of the input, like in a chatbot input box, or by contaminating a data store, so that they can poison the retrieved context.
+
+So, here's what you can do with Jev.
+
+[open `scripts/02_input_and_retrieval_safety_gate.py`]
+
+I've got four tiny examples here: a normal refund question, a user asking for a service-account password, a normal policy passage, and a retrieved passage containing a fake `SYSTEM` instruction.
+
+For each one, Jev answers two Noul questions: is this trying to override instructions, and is it trying to extract credentials?
+
+[show `QUESTIONS`, then run the script]
+
+You can see that the two ordinary examples are classified to go through the normal controls, while the other two go to review. Since these options are predetermined and provided to Jev, you can easily plug this into your program control flow as a quick, and cheap screening tool, as an additional security layer.
 
 ---
 
 ## Recipe 3: Reject retrieval results that are topically similar but useless
 
-- Problem: retrieval similarity can rank a passage highly because it shares words with the query, even when it does not answer the question.
-- Example query: "How long do I have to return an unopened item?"
-- Candidate contrast: a return-policy passage and an international-shipping passage both mention thirty days.
-- Jev question: `Noul` asks whether this specific chunk directly helps answer this specific query.
-- Code policy: include above the measured relevance threshold; exclude below it.
-  [show three retrieved chunks with similarity implied, then Jev include/exclude labels]
-- Elastic seam: Elasticsearch performs candidate retrieval and access filtering. Jev receives the query and compact candidate text after retrieval.
-- Boundary: the script uses hard-coded candidates. It does not claim that Jev replaces retrieval, reranking, or evaluation of the complete RAG answer.
+Next, let's move one step further into a RAG pipeline.
+
+One common issue with search is that results can be returned because it shares the right words, but not be super useful for answering the question.
+
+Here's how Jev can help to screen those responses.
+
+[open `scripts/03_rag_relevance_threshold.py`]
+Here, the question is: "How long do I have to return an unopened item?"
+
+Imagine that the retriever, like Elasticsearch, returned these chunks from your database.
+
+They're all plausible, but not quite. One passage is about returns, another is about international shipping and the third is about refunds.
+
+You could get all these results into the LLM or the agentic chatbot, but - let see what we can do with Jev.
+
+We can actually just ask Jev for a Noul - does this text directly help answer the query?
+
+And if I run this:
+[run the script; highlight include, exclude, exclude]
+
+It correctly says hey, the returns chunk is relevant, so include that, but exclude the other.
+
+Elasticsearch does the fast retrieval. Jev can then act as a second stage filter, to make sure that we don't pollute the LLM's context window in the next stage, and save money on token costs.
 
 ---
 
-## Recipe 4: Check whether a citation supports one claim
+There are others in this repo that you can ask Jev to do - like:
 
-- Problem: a generated answer can attach a real citation to a claim the cited passage does not establish.
-- State: one atomic claim and one located citation passage.
-- Jev question: `Choice` among `supports`, `contradicts`, and `not_addressed`.
-- Proof cases:
-  - A passage directly supports the return-window claim.
-  - A passage contradicts the opened-item claim.
-  - A passage says nothing about free return shipping.
-  [show claim-evidence matrix with one row per verdict]
-- Code policy: allow the supported claim, revise or reject the contradicted claim, and send the unaddressed claim through a missing-evidence path.
-- Boundary: code still owns citation IDs, exact quote lookup, and claim extraction. This is citation-support checking, not a universal hallucination detector.
+[show `scripts/04_citation_support_checker.py`]
+Check whether a citation actually provides support for a particular claim - so, for example, you're building an agentic research bot, and you're trying to see whether the original citation actually supports a claim.
 
----
+You could get it to decide whether it `supports`, `contradicts` the claim, or actually if it's `not_addressed`.
 
-## Recipe 5: Decide what to do after a zero-result search
+When I run the script - you see Jev suggest the likelihood of each choice.
 
-- Problem: "zero results" is not one failure. A typo, acronym, active filter, ambiguous term, exact identifier, and genuine corpus gap need different responses.
-- State: the query, known terms, and active filters.
-- Jev question: one `Choice` over six named causes.
-- Focus narration on contrasting outcomes rather than reading all six:
-  - `refnd polcy` → offer a spelling correction.
-  - `enterprise audit logs` with `plan:free` → suggest removing the conflicting filter.
-  - `quantum fax integration` → log a corpus gap.
-  [show all six routes in terminal output; visually emphasize the three narrated cases]
-- Code policy owns the actual rewrite, filter change, clarification interface, exact-ID lookup, and gap logging.
-- Elastic seam: this decision happens after Elasticsearch returns no hits and the application attaches deterministic query context.
+[show `scripts/05_tool_and_skill_selector.py`]
+You can also imagine that instead of using an LLM, you could use Jev to trigger the right skill, or the right tool call.
+
+[run code]
+This could be another choice like I've set up here; where for each request, Jev selects one skill or tool that best suits the request.
+
+Alternatively, you could set this up as a Noul, if you wanted Jev to judge for each tool or skill, whether it should be invoked the task.
+
+[show `scripts/06_agent_trace_outcome_verifier.py`]
+You can also imagine having Jev go through your observability outputs - like agent traces, and classifying them so you can review them faster in the future.
+
+[run code]
+Here, for example - I'm basically tagging certain messages in traces, to identify whether the requested outcome was completed,
 
 ---
 
-## Recipe 6: Select a tool or skill, including no tool
+## Draft wrap-up
 
-- Problem: an agent with several tools or skills should not load or call one merely because its name resembles the request.
-- State: one user request plus a bounded catalog of capability names and descriptions.
-- Jev question: `Choice` among documentation search, account lookup, usage report, refund workflow, and `no_tool_or_skill`.
-- Proof cases: route a public documentation question to search, a usage question to the report tool, a refund operation to the workflow skill, and a writing request to no tool.
-  [show request → selected capability cards; end on the no-tool result]
-- Code policy: use confidence only as an illustrative review signal. Code still validates parameters, permissions, and execution.
-- Elastic seam: the same pattern can select an Agent Builder tool or skill description, but the script does not call Agent Builder.
+So, to wrap up - Jev is an excellent tool to have in your tool kit.
 
----
+Like that language "Probably" suggests, it's great for all those awkward jobs where ordinary rules aren't quite semantic enough, but a general-purpose LLM is doing far more work than you need.
 
-## Recipe 7: Catch an agent that claims success after its tool failed
+You can use it with a simple, predictable pattern - give Jev a compact piece of state, define the possible answers up front, and extract the output back into a normal deterministic workflow.
 
-- Problem: an agent can look active and still fail the user's task. The final answer may even claim success after a failed tool call.
-- Use the deliberately simple trace:
-  - User asks for a duplicate charge refund.
-  - Refund tool returns HTTP 403 and creates no refund.
-  - Final message says the refund was processed.
-- Deterministic preparation: code extracts the tool status and whether the refund record exists before Jev runs.
-- Jev questions: separate `Noul` judgments for task completion, final-message support, and user dissatisfaction.
-- Code policy: a deterministic tool error or unsupported success claim sends the run to priority review.
-  [show trace waterfall: request → refund tool 403 → false success message → priority review]
-- Add the expectation-gap contrast: the refund succeeds, but the customer remains unhappy about the delay. Completion and satisfaction must remain separate decisions.
-  [split screen: silent failure versus completed-but-unsatisfying run]
-- Elastic seam: Agent Builder traces can provide tool and model spans. Content capture requires explicit privacy settings, and any demo should use synthetic or approved redacted data.
-- Boundary: Jev does not establish root cause, authorize remediation, or securely evaluate an unbounded hostile trace. Code normalizes exact facts and controls the review workflow.
+If the task needs free-form writing, deep planning, or a chain of reasoning - use an LLM.
 
----
+But if you can say, "Here are the valid answers; tell me which one fits this text," then Jev is probably worth trying.
 
-## Wrap-up: use Jev for semantic decisions with a closed answer space
+I've put all the runnable demos, including the Haiku comparison, in the repository linked in the description.
 
-- Recap the seven positions in the product lifecycle:
-  - Route the model.
-  - Screen input and retrieved text.
-  - Filter RAG evidence.
-  - Check citation support.
-  - Recover from zero results.
-  - Select a tool or skill.
-  - Verify the completed agent run.
-  [show lifecycle graphic with all seven positions active]
-- Give the suitability test:
-  - The application can define the answer space before the request.
-  - The hard part is a narrow semantic judgment over supplied text.
-  - Code can retain arithmetic, authorization, side effects, and thresholds.
-  - There is an explicit low-confidence, no-match, or human-review path.
-  - A labeled evaluation set can test the question and policy.
-- State where Jev does not fit: free-form generation, exact arithmetic, chronology, IDs, permissions, or an irreversible decision based on one probability.
-- Point viewers to the repository containing all seven runnable demos and the four-way router comparison.
-- End on a specific question: "What semantic `if` statement in your product would you move out of a general-purpose LLM first?"
+These were some simple demos - but I'd love to see what you've been building with Jev - let me know in the comments. And if this was useful, give us a like - it helps other people find the video.
 
-# Visual assets needed
-
-- **Decision-layer pattern:** A reusable four-stage graphic showing compact state, typed Jev question, code policy, and action or fallback. It needs variants that can highlight one stage while preserving the same semantic structure.
-- **Seven-recipe lifecycle:** A product-flow graphic placing the seven recipes before model invocation, around retrieval, inside tool use, and after the completed agent run.
-
-# Source references
-
-- TypeSafe introduction: https://docs.typesafe.ai/
-- TypeSafe models and pricing: https://docs.typesafe.ai/models
-- Jev 1.13 limitations: https://docs.typesafe.ai/model-jaggedness/jev-1.13
-- TypeSafe parallel-questions cookbook: https://docs.typesafe.ai/cookbooks/parallel_questions
-- OpenRouter Claude Haiku 4.5: https://openrouter.ai/anthropic/claude-haiku-4.5
-- OpenRouter structured outputs: https://openrouter.ai/docs/guides/features/structured-outputs
-- EIS supported models: https://www.elastic.co/docs/explore-analyze/elastic-inference/eis-supported-models
-- Elastic Agent Builder model guidance: https://www.elastic.co/docs/explore-analyze/ai-features/agent-builder/models
-- Elastic Agent Builder trace collection: https://www.elastic.co/docs/explore-analyze/ai-features/agent-builder/collect-traces
+Thanks for watching, and I'll see you next time.
